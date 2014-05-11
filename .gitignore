@@ -26,3 +26,8 @@ Makefile*
 # QtCreator
 
 *.autosave
+
+# Custom
+
+mmapr
+v90
