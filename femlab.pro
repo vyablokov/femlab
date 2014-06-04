@@ -16,4 +16,4 @@ TEMPLATE = app
 
 
 SOURCES += \
-    femlab.c
+    main.cpp
