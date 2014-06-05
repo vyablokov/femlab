@@ -36,13 +36,14 @@ int getEdgeK(int j)
 double getNext(int j, int k, double** Tn, double** T)
 {
     if (j == 0 || k == 0) return T[j][k];
-    if (j == Nx) return (hx+k1) * Tn[Nx-1][k];
-    if (k == Ny) return (hy+k2) * Tn[j][Ny-1];
+    //if (j == Nx) return (hx+k1) * Tn[Nx-1][k];
+    //if (k == Ny) return (hy+k2) * Tn[j][Ny-1];
     else {
-        return a*ht*(
+       return a*ht*(
                     (T[j+1][k] - 2*T[j][k] + T[j-1][k]) / (hx*hx) +
                 (T[j][k+1] - 2*T[j][k] + T[j][k-1]) / (hy*hy)
                 ) + T[j][k];
+        //return ((Tn[j+1][k] + Tn[j-1][k])/(hx*hx) + (Tn[j][k+1] + Tn[j][k-1])/(hy*hy) + T[j][k]/(a*ht)) / (1/(a*ht) + 2/(hx*hx) + 2/(hy*hy));
     }
 }
 

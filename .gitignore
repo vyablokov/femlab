@@ -36,3 +36,5 @@ Makefile*
 mmapr
 v90
 build-femlab-Desktop_Qt_5_3_0_clang_64bit-Debug
+build-femlab-Desktop_Qt_5_3_0_clang_64bit-Debug/*
+
