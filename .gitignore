@@ -27,7 +27,11 @@ Makefile*
 
 *.autosave
 
-# Custom
+# Word
+
+~$*
+
+# Custom folders
 
 mmapr
 v90
