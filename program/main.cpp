@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 
 double** A;
 double** An;
@@ -26,25 +27,64 @@ int getEdgeK(int j)
         return bndK;
     if(j > bndJ)
     {
-        int edgeK = floor((sqrt(radius*radius - ((double)j*hx - (double)bndJ*hx)*((double)j*hx - (double)bndJ*hx)) + (double)bndK*hy) / hy);
+        int edgeK = ceil((sqrt(radius*radius - ((double)j*hx - (double)bndJ*hx)*((double)j*hx - (double)bndJ*hx)) + (double)bndK*hy) / hy);
         return edgeK;
     }
     else
         return Ny;
 }
 
+int getEdgeJ(int k)
+{
+    if(k == Ny)
+        return bndJ;
+    if(k > bndK)
+    {
+        int edgeJ = ceil((sqrt(radius*radius - ((double)k*hy - (double)bndK*hy)*((double)k*hy - (double)bndK*hy)) + (double)bndJ*hx) / hx);
+        return edgeJ;
+    }
+    else
+        return Nx;
+}
+
+double getXEdgeCoeff(int k) {
+    int lastXStep = getEdgeJ(k) - 1;
+    double edgeCoeffX = sqrt(radius*radius - (k - bndK)*(k - bndK)*hy*hy)/hx - lastXStep + bndJ;
+    return edgeCoeffX;
+}
+
+double getYEdgeCoeff(int j) {
+    int lastYStep = getEdgeK(j) - 1;
+    double edgeCoeffY = sqrt(radius*radius - (j - bndJ)*(j - bndJ)*hx*hx)/hy - lastYStep + bndK;
+    return edgeCoeffY;
+}
+
+
 double getNext(int j, int k, double** Tn, double** T)
 {
-    if (j == 0 || k == 0) return T[j][k];
-    //if (j == Nx) return (hx+k1) * Tn[Nx-1][k];
-    //if (k == Ny) return (hy+k2) * Tn[j][Ny-1];
-    else {
-       return a*ht*(
-                    (T[j+1][k] - 2*T[j][k] + T[j-1][k]) / (hx*hx) +
-                (T[j][k+1] - 2*T[j][k] + T[j][k-1]) / (hy*hy)
-                ) + T[j][k];
-        //return ((Tn[j+1][k] + Tn[j-1][k])/(hx*hx) + (Tn[j][k+1] + Tn[j][k-1])/(hy*hy) + T[j][k]/(a*ht)) / (1/(a*ht) + 2/(hx*hx) + 2/(hy*hy));
+    if (j == 0 && (k == Ny / 2) ) {
+        return T[j+1][k]/(1 + a*hx);
     }
+    if (j == 0 || k == 0)
+        return T[j][k];
+    double d2T_dx2, d2T_dy2;
+    if (j == getEdgeJ(k) - 1 && k > bndK)
+    {
+        double edgeCoeffX = getXEdgeCoeff(k);
+        d2T_dx2 = 2*(T[j+1][k] - (edgeCoeffX+1)*T[j][k] + edgeCoeffX*T[j-1][k]) / (edgeCoeffX*(edgeCoeffX+1)*hx*hx);
+    }
+    else
+        d2T_dx2 = (T[j+1][k] - 2*T[j][k] + T[j-1][k]) / (hx*hx);
+
+    if (j > bndJ &&k == getEdgeK(j+1) - 1)
+    {
+        double edgeCoeffY = getYEdgeCoeff(j);
+        d2T_dy2 = 2*(T[j][k+1] - (edgeCoeffY+1)*T[j][k] + edgeCoeffY*T[j][k-1]) / (edgeCoeffY*(edgeCoeffY+1)*hy*hy);
+    }
+    else
+        d2T_dy2 = (T[j][k+1] - 2*T[j][k] + T[j][k-1]) / (hy*hy);
+
+    return a*ht*(d2T_dx2 + d2T_dy2) + T[j][k];
 }
 
 void makeStep(double** newMx, double** oldMx)
@@ -60,13 +100,44 @@ void printMx(double** mat)
 {
     FILE* s = fopen("mx.txt", "w");
 
-    for (int j = 0; j < Nx+1; j++){
-        for (int k = 0; k < Ny+1; k++)
-            fprintf(s, "%f ", mat[j][k]);
+    for (int k = Ny; k >= 0; k--){
+        for (int j = 0; j <= Nx; j++)
+            fprintf(s, "%.4f\t", mat[j][k]);
         fputc('\n', s);
     }
     putchar('\n');
     fclose(s);
+}
+
+void printPoints(double** mat, int num)
+{
+    FILE* s = fopen("points.txt", "w");
+    double x, y;
+    double edgeX, edgeY;
+    int j,k;
+    int edgeJ, edgeK;
+    for (j=0; j <= Nx; j++) {
+        edgeK = getEdgeK(j);
+        for(k = 0; k < edgeK; k++) {
+            edgeJ = getEdgeJ(k);
+            x = hx*j;
+            y = hy*k;
+            if(j == (edgeJ - 1) && (j > bndJ && k > bndK)) {
+                edgeX = hx*(j+getXEdgeCoeff(k));
+                fprintf(s, "%.2f %.2f %.2f\n", edgeX, y, mat[j+1][k]);
+            }
+            if(k == (edgeK - 1) && (j > bndJ && k > bndK)) {
+                edgeY = hy*(k+getYEdgeCoeff(j));
+                fprintf(s, "%.2f %.2f %.2f\n", x, edgeY, mat[j][k+1]);
+            }
+            fprintf(s, "%.2f %.2f %.2f\n", x, y, mat[j][k]);
+        }
+        if (j <= bndJ || j == Nx)
+            fprintf(s, "%.2f %.2f %.2f\n", x, edgeK*hx, mat[j][Ny]);
+        fprintf(s, "\n");
+    }
+    fclose(s);
+    system("gnuplot \"plot.sc\"");
 }
 
 void clearMx(double** A)
@@ -85,11 +156,14 @@ void copyMx(double** dst, double** src)
 
 int main(int argc, char *argv[])
 {
-    using namespace std;
-
-    Nx = 160; Ny = 240;
+    if (argc < 4) {
+        printf("Usage: ./femlab <X steps> <Y steps> <N steps>\n");
+        exit(1);
+    }
+    Nx = atoi(argv[1]);
+    Ny = atoi(argv[2]);
     ht = 0.001;
-    Nt = 25000;
+    Nt = atoi(argv[3]);
 
     hx = botL / Nx;
     hy = leftL / Ny;
@@ -112,7 +186,7 @@ int main(int argc, char *argv[])
 
     for (int j = 0; j < Nx+1; j++){
         for (int k = 0; k < Ny+1; k++){
-            An[j][k] = -100.0;
+            An[j][k] = 100.0;
         }
     }
 
@@ -143,6 +217,7 @@ int main(int argc, char *argv[])
         copyMx(A, An);
     }
     printMx(A);
+    printPoints(A, stepNo);
     printf("Ready.\n");
 
     return 0;
